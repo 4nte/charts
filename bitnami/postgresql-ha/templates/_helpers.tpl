@@ -92,9 +92,9 @@ Helm 2.11 supports the assignment of a value to a variable defined in a differen
 but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else logic.
 Also, we can't use a single if because lazy evaluation is not an option
 */}}
-{{- if .Values.global }}
-    {{- if .Values.global.postgresql }}
-        {{- if .Values.global.postgresql.username }}
+{{- if .Values.global -}}
+    {{- if .Values.global.postgresql -}}
+        {{- if .Values.global.postgresql.username -}}
             {{- .Values.global.postgresql.username -}}
         {{- else -}}
             {{- .Values.postgresql.username -}}
@@ -111,9 +111,9 @@ Also, we can't use a single if because lazy evaluation is not an option
 Return PostgreSQL postgres user password
 */}}
 {{- define "postgresql-ha.postgresqlPostgresPassword" -}}
-{{- if .Values.global }}
-    {{- if .Values.global.postgresql }}
-        {{- if .Values.global.postgresql.postgresPassword }}
+{{- if .Values.global -}}
+    {{- if .Values.global.postgresql -}}
+        {{- if .Values.global.postgresql.postgresPassword -}}
             {{- .Values.global.postgresql.postgresPassword -}}
         {{- else -}}
             {{- ternary (randAlphaNum 10) .Values.postgresql.postgresPassword (empty .Values.postgresql.postgresPassword) -}}
@@ -123,6 +123,23 @@ Return PostgreSQL postgres user password
     {{- end -}}
 {{- else -}}
     {{- ternary (randAlphaNum 10) .Values.postgresql.postgresPassword (empty .Values.postgresql.postgresPassword) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return true if PostgreSQL postgres user password has been provided
+*/}}
+{{- define "postgresql-ha.postgresqlPasswordProvided" -}}
+{{- if .Values.global -}}
+    {{- if .Values.global.postgresql -}}
+        {{- if .Values.global.postgresql.postgresPassword -}}
+            {{- true -}}
+        {{- end -}}
+    {{- end -}}
+{{- else -}}
+    {{- if .Values.postgresql.postgresPassword -}}
+      {{- true -}}
+    {{- end -}}
 {{- end -}}
 {{- end -}}
 
@@ -159,9 +176,9 @@ Helm 2.11 supports the assignment of a value to a variable defined in a differen
 but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else logic.
 Also, we can't use a single if because lazy evaluation is not an option
 */}}
-{{- if .Values.global }}
-    {{- if .Values.global.pgpool }}
-        {{- if .Values.global.pgpool.adminUsername }}
+{{- if .Values.global -}}
+    {{- if .Values.global.pgpool -}}
+        {{- if .Values.global.pgpool.adminUsername -}}
             {{- .Values.global.pgpool.adminUsername -}}
         {{- else -}}
             {{- .Values.pgpool.adminUsername -}}
@@ -183,9 +200,9 @@ Helm 2.11 supports the assignment of a value to a variable defined in a differen
 but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else logic.
 Also, we can't use a single if because lazy evaluation is not an option
 */}}
-{{- if .Values.global }}
-    {{- if .Values.global.pgpool }}
-        {{- if .Values.global.pgpool.adminPassword }}
+{{- if .Values.global -}}
+    {{- if .Values.global.pgpool -}}
+        {{- if .Values.global.pgpool.adminPassword -}}
             {{- .Values.global.pgpool.adminPassword -}}
         {{- else -}}
             {{- ternary (randAlphaNum 10) .Values.pgpool.adminPassword (empty .Values.pgpool.adminPassword) -}}
@@ -199,6 +216,13 @@ Also, we can't use a single if because lazy evaluation is not an option
 {{- end -}}
 
 {{/*
+Get the metrics ConfigMap name.
+*/}}
+{{- define "postgresql.metricsCM" -}}
+{{- printf "%s-metrics" (include "common.names.fullname" .) -}}
+{{- end -}}
+
+{{/*
 Return the PostgreSQL database to create
 */}}
 {{- define "postgresql-ha.postgresqlDatabase" -}}
@@ -208,9 +232,9 @@ but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else l
 Also, we can't use a single if because lazy evaluation is not an option
 */}}
 {{- $postgresqlDatabase := default "postgres" .Values.postgresql.database -}}
-{{- if .Values.global }}
-    {{- if .Values.global.postgresql }}
-        {{- if .Values.global.postgresql.database }}
+{{- if .Values.global -}}
+    {{- if .Values.global.postgresql -}}
+        {{- if .Values.global.postgresql.database -}}
             {{- default "postgres" .Values.global.postgresql.database -}}
         {{- else -}}
             {{- $postgresqlDatabase -}}
@@ -232,9 +256,9 @@ Helm 2.11 supports the assignment of a value to a variable defined in a differen
 but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else logic.
 Also, we can't use a single if because lazy evaluation is not an option
 */}}
-{{- if .Values.global }}
-    {{- if .Values.global.postgresql }}
-        {{- if .Values.global.postgresql.repmgrUsername }}
+{{- if .Values.global -}}
+    {{- if .Values.global.postgresql -}}
+        {{- if .Values.global.postgresql.repmgrUsername -}}
             {{- .Values.global.postgresql.repmgrUsername -}}
         {{- else -}}
             {{- .Values.postgresql.repmgrUsername -}}
@@ -256,9 +280,9 @@ Helm 2.11 supports the assignment of a value to a variable defined in a differen
 but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else logic.
 Also, we can't use a single if because lazy evaluation is not an option
 */}}
-{{- if .Values.global }}
-    {{- if .Values.global.postgresql }}
-        {{- if .Values.global.postgresql.repmgrPassword }}
+{{- if .Values.global -}}
+    {{- if .Values.global.postgresql -}}
+        {{- if .Values.global.postgresql.repmgrPassword -}}
             {{- .Values.global.postgresql.repmgrPassword -}}
         {{- else -}}
             {{- ternary (randAlphaNum 10) .Values.postgresql.repmgrPassword (empty .Values.postgresql.repmgrPassword) -}}
@@ -280,9 +304,9 @@ Helm 2.11 supports the assignment of a value to a variable defined in a differen
 but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else logic.
 Also, we can't use a single if because lazy evaluation is not an option
 */}}
-{{- if .Values.global }}
-    {{- if .Values.global.postgresql }}
-        {{- if .Values.global.postgresql.repmgrDatabase }}
+{{- if .Values.global -}}
+    {{- if .Values.global.postgresql -}}
+        {{- if .Values.global.postgresql.repmgrDatabase -}}
             {{- .Values.global.postgresql.repmgrDatabase -}}
         {{- else -}}
             {{- .Values.postgresql.repmgrDatabase -}}
@@ -299,9 +323,9 @@ Also, we can't use a single if because lazy evaluation is not an option
 Return true if a secret object should be created for PostgreSQL
 */}}
 {{- define "postgresql-ha.postgresqlCreateSecret" -}}
-{{- if .Values.global }}
-    {{- if .Values.global.postgresql }}
-        {{- if .Values.global.postgresql.existingSecret }}
+{{- if .Values.global -}}
+    {{- if .Values.global.postgresql -}}
+        {{- if .Values.global.postgresql.existingSecret -}}
         {{- else if (not .Values.postgresql.existingSecret) -}}
             {{- true -}}
         {{- end -}}
@@ -322,9 +346,9 @@ Helm 2.11 supports the assignment of a value to a variable defined in a differen
 but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else logic.
 Also, we can't use a single if because lazy evaluation is not an option
 */}}
-{{- if .Values.global }}
-    {{- if .Values.global.postgresql }}
-        {{- if .Values.global.postgresql.existingSecret }}
+{{- if .Values.global -}}
+    {{- if .Values.global.postgresql -}}
+        {{- if .Values.global.postgresql.existingSecret -}}
             {{- printf "%s" (tpl .Values.global.postgresql.existingSecret $) -}}
         {{- else if .Values.postgresql.existingSecret -}}
             {{- printf "%s" (tpl .Values.postgresql.existingSecret $) -}}
@@ -349,9 +373,9 @@ Also, we can't use a single if because lazy evaluation is not an option
 Return true if a secret object should be created for Pgpool
 */}}
 {{- define "postgresql-ha.pgpoolCreateSecret" -}}
-{{- if .Values.global }}
-    {{- if .Values.global.pgpool }}
-        {{- if .Values.global.pgpool.existingSecret }}
+{{- if .Values.global -}}
+    {{- if .Values.global.pgpool -}}
+        {{- if .Values.global.pgpool.existingSecret -}}
         {{- else if (not .Values.pgpool.existingSecret) -}}
             {{- true -}}
         {{- end -}}
@@ -372,9 +396,9 @@ Helm 2.11 supports the assignment of a value to a variable defined in a differen
 but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else logic.
 Also, we can't use a single if because lazy evaluation is not an option
 */}}
-{{- if .Values.global }}
-    {{- if .Values.global.pgpool }}
-        {{- if .Values.global.pgpool.existingSecret }}
+{{- if .Values.global -}}
+    {{- if .Values.global.pgpool -}}
+        {{- if .Values.global.pgpool.existingSecret -}}
             {{- printf "%s" .Values.global.pgpool.existingSecret -}}
         {{- else if .Values.pgpool.existingSecret -}}
             {{- printf "%s" .Values.pgpool.existingSecret -}}
@@ -563,9 +587,7 @@ Compile all warnings into a single message, and call fail.
 {{- define "postgresql-ha.validateValues.nodesHostnames" -}}
 {{- $postgresqlFullname := include "postgresql-ha.postgresql" . }}
 {{- $postgresqlHeadlessServiceName := printf "%s-headless" (include "postgresql-ha.postgresql" .) }}
-{{- $releaseNamespace := .Release.Namespace }}
-{{- $clusterDomain:= .Values.clusterDomain }}
-{{- $nodeHostname := printf "%s-00.%s.%s.svc.%s:1234" $postgresqlFullname $postgresqlHeadlessServiceName $releaseNamespace $clusterDomain }}
+{{- $nodeHostname := printf "%s-00.%s" $postgresqlFullname $postgresqlHeadlessServiceName }}
 {{- if gt (len $nodeHostname) 128 -}}
 postgresql-ha: Nodes hostnames
     PostgreSQL nodes hostnames ({{ $nodeHostname }}) exceeds the characters limit for Pgpool: 128.
@@ -575,7 +597,7 @@ postgresql-ha: Nodes hostnames
 
 {{/* Validate values of PostgreSQL HA - must provide mandatory LDAP parameters when LDAP is enabled */}}
 {{- define "postgresql-ha.validateValues.ldap" -}}
-{{- if and .Values.ldap.enabled (or (empty .Values.ldap.uri) (empty .Values.ldap.base) (empty .Values.ldap.binddn) (empty .Values.ldap.bindpw)) -}}
+{{- if and .Values.ldap.enabled (or (empty .Values.ldap.uri) (empty .Values.ldap.base) (empty .Values.ldap.binddn) (and (empty .Values.ldap.bindpw) (empty .Values.ldap.existingSecret))) -}}
 postgresql-ha: LDAP
     Invalid LDAP configuration. When enabling LDAP support, the parameters "ldap.uri",
     "ldap.base", "ldap.binddn", and "ldap.bindpw" are mandatory. Please provide them:
@@ -636,19 +658,116 @@ pool_passwd file.
 Return the path to the cert file.
 */}}
 {{- define "postgresql-ha.pgpool.tlsCert" -}}
+{{- if and .Values.pgpool.tls.enabled .Values.pgpool.tls.autoGenerated }}
+    {{- printf "/opt/bitnami/pgpool/certs/tls.crt" -}}
+{{- else -}}
 {{- required "Certificate filename is required when TLS in enabled" .Values.pgpool.tls.certFilename | printf "/opt/bitnami/pgpool/certs/%s" -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
 Return the path to the cert key file.
 */}}
 {{- define "postgresql-ha.pgpool.tlsCertKey" -}}
-{{- required "Certificate Key filename is required when TLS in enabled" .Values.pgpool.tls.certKeyFilename | printf "/opt/bitnami/pgpool/certs/%s" -}}
+{{- if and .Values.pgpool.tls.enabled .Values.pgpool.tls.autoGenerated }}
+    {{- printf "/opt/bitnami/pgpool/certs/tls.key" -}}
+{{- else -}}
+    {{- required "Certificate Key filename is required when TLS in enabled" .Values.pgpool.tls.certKeyFilename | printf "/opt/bitnami/pgpool/certs/%s" -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
 Return the path to the CA cert file.
 */}}
 {{- define "postgresql-ha.pgpool.tlsCACert" -}}
-{{- printf "/opt/bitnami/pgpool/certs/%s" .Values.pgpool.tls.certCAFilename -}}
+{{- if and .Values.pgpool.tls.enabled .Values.pgpool.tls.autoGenerated }}
+    {{- printf "/opt/bitnami/pgpool/certs/ca.crt" -}}
+{{- else -}}
+    {{- printf "/opt/bitnami/pgpool/certs/%s" .Values.pgpool.tls.certCAFilename -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return true if a TLS credentials secret object should be created
+*/}}
+{{- define "postgresql-ha.createTlsSecret" -}}
+{{- if and .Values.pgpool.tls.enabled .Values.pgpool.tls.autoGenerated (not .Values.pgpool.tls.certificatesSecret) }}
+    {{- true -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the path to the CA cert file.
+*/}}
+{{- define "postgresql-ha.tlsSecretName" -}}
+{{- if .Values.pgpool.tls.enabled }}
+{{- if .Values.pgpool.tls.autoGenerated }}
+    {{- printf "%s-crt" (include "postgresql-ha.pgpool" .) -}}
+{{- else -}}
+    {{ required "A secret containing TLS certificates is required when TLS is enabled" .Values.pgpool.tls.certificatesSecret }}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return true if PostgreSQL postgres existingSecret has been provided
+*/}}
+{{- define "postgresql-ha.postgresql.existingSecretProvided" -}}
+{{- if .Values.global -}}
+    {{- if .Values.global.postgresql -}}
+        {{- if .Values.global.postgresql.existingSecret -}}
+            {{- true -}}
+        {{- else if .Values.postgresql.existingSecret -}}
+            {{- true -}}
+        {{- end -}}
+    {{- else if .Values.postgresql.existingSecret -}}
+        {{- true -}}
+    {{- end -}}
+{{- else -}}
+    {{- if .Values.postgresql.existingSecret -}}
+      {{- true -}}
+    {{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return true if PostgreSQL pgpool existingSecret has been provided
+*/}}
+{{- define "postgresql-ha.pgpool.existingSecretProvided" -}}
+{{- if .Values.global -}}
+    {{- if .Values.global.pgpool -}}
+        {{- if .Values.global.pgpool.existingSecret -}}
+            {{- true -}}
+        {{- else if .Values.pgpool.existingSecret -}}
+            {{- true -}}
+        {{- end -}}
+    {{- else if .Values.pgpool.existingSecret -}}
+        {{- true -}}
+    {{- end -}}
+{{- else -}}
+    {{- if .Values.pgpool.existingSecret -}}
+      {{- true -}}
+    {{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the path to the cert file.
+*/}}
+{{- define "postgresql-ha.postgresql.tlsCert" -}}
+{{- required "Certificate filename is required when TLS in enabled" .Values.postgresql.tls.certFilename | printf "/opt/bitnami/postgresql/certs/%s" -}}
+{{- end -}}
+
+{{/*
+Return the path to the cert key file.
+*/}}
+{{- define "postgresql-ha.postgresql.tlsCertKey" -}}
+{{- required "Certificate Key filename is required when TLS in enabled" .Values.postgresql.tls.certKeyFilename | printf "/opt/bitnami/postgresql/certs/%s" -}}
+{{- end -}}
+
+{{/*
+Return the path to the CA cert file.
+*/}}
+{{- define "postgresql-ha.postgresql.tlsCACert" -}}
+{{- printf "/opt/bitnami/postgresql/certs/%s" .Values.postgresql.tls.certCAFilename -}}
 {{- end -}}

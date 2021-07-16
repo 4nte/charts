@@ -33,7 +33,7 @@ Bitnami charts can be used with [Kubeapps](https://kubeapps.com/) for deployment
 ## Prerequisites
 
 - Kubernetes 1.12+
-- Helm 3.0-beta3+
+- Helm 3.1.0
 
 ## Parameters
 
@@ -56,6 +56,10 @@ The following table lists the helpers available in the library which are scoped 
 | `common.capabilities.deployment.apiVersion`  | Return the appropriate apiVersion for deployment.                                              | `.` Chart context |
 | `common.capabilities.statefulset.apiVersion` | Return the appropriate apiVersion for statefulset.                                             | `.` Chart context |
 | `common.capabilities.ingress.apiVersion`     | Return the appropriate apiVersion for ingress.                                                 | `.` Chart context |
+| `common.capabilities.rbac.apiVersion`        | Return the appropriate apiVersion for RBAC resources.                                          | `.` Chart context |
+| `common.capabilities.crd.apiVersion`         | Return the appropriate apiVersion for CRDs.                                                    | `.` Chart context |
+| `common.capabilities.policy.apiVersion`      | Return the appropriate apiVersion for policy                                                   | `.` Chart context |
+| `common.capabilities.supportsHelmVersion`    | Returns true if the used Helm version is 3.3+                                                  | `.` Chart context |
 
 ### Errors
 
@@ -68,13 +72,16 @@ The following table lists the helpers available in the library which are scoped 
 | Helper identifier           | Description                                          | Expected Input                                                                                          |
 |-----------------------------|------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
 | `common.images.image`       | Return the proper and full image name                | `dict "imageRoot" .Values.path.to.the.image "global" $`, see [ImageRoot](#imageroot) for the structure. |
-| `common.images.pullSecrets` | Return the proper Docker Image Registry Secret Names | `dict "images" (list .Values.path.to.the.image1, .Values.path.to.the.image2) "global" .Values.global`   |
+| `common.images.pullSecrets` | Return the proper Docker Image Registry Secret Names (deprecated: use common.images.renderPullSecrets instead) | `dict "images" (list .Values.path.to.the.image1, .Values.path.to.the.image2) "global" .Values.global` |
+| `common.images.renderPullSecrets` | Return the proper Docker Image Registry Secret Names (evaluates values as templates) | `dict "images" (list .Values.path.to.the.image1, .Values.path.to.the.image2) "context" $` |
 
 ### Ingress
 
-| Helper identifier        | Description                                                          | Expected Input                                                                                                                                                                   |
-|--------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `common.ingress.backend` | Generate a proper Ingress backend entry depending on the API version | `dict "serviceName" "foo" "servicePort" "bar"`, see the [Ingress deprecation notice](https://kubernetes.io/blog/2019/07/18/api-deprecations-in-1-16/) for the syntax differences |
+| Helper identifier                         | Description                                                          | Expected Input                                                                                                                                                                   |
+|-------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `common.ingress.backend`                  | Generate a proper Ingress backend entry depending on the API version | `dict "serviceName" "foo" "servicePort" "bar"`, see the [Ingress deprecation notice](https://kubernetes.io/blog/2019/07/18/api-deprecations-in-1-16/) for the syntax differences |
+| `common.ingress.supportsPathType`         | Prints "true" if the pathType field is supported                     | `.` Chart context                                                                                                                                                                |
+| `common.ingress.supportsIngressClassname` | Prints "true" if the ingressClassname field is supported             | `.` Chart context                                                                                                                                                                |
 
 ### Labels
 
@@ -93,10 +100,12 @@ The following table lists the helpers available in the library which are scoped 
 
 ### Secrets
 
-| Helper identifier     | Description                      | Expected Input                                                                                                                                                 |
-|-----------------------|----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `common.secrets.name` | Generate the name of the secret. | `dict "existingSecret" .Values.path.to.the.existingSecret "defaultNameSuffix" "mySuffix" "context" $` see [ExistingSecret](#existingsecret) for the structure. |
-| `common.secrets.key`  | Generate secret key.             | `dict "existingSecret" .Values.path.to.the.existingSecret "key" "keyName"` see [ExistingSecret](#existingsecret) for the structure.                            |
+| Helper identifier         | Description                                                  | Expected Input                                                                                                                                                                                                                  |
+|---------------------------|--------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `common.secrets.name`     | Generate the name of the secret.                             | `dict "existingSecret" .Values.path.to.the.existingSecret "defaultNameSuffix" "mySuffix" "context" $` see [ExistingSecret](#existingsecret) for the structure.                                                                  |
+| `common.secrets.key`      | Generate secret key.                                         | `dict "existingSecret" .Values.path.to.the.existingSecret "key" "keyName"` see [ExistingSecret](#existingsecret) for the structure.                                                                                             |
+| `common.passwords.manage` | Generate secret password or retrieve one if already created. | `dict "secret" "secret-name" "key" "keyName" "providedValues" (list "path.to.password1" "path.to.password2") "length" 10 "strong" false "chartName" "chartName" "context" $`, length, strong and chartNAme fields are optional. |
+| `common.secrets.exists`   | Returns whether a previous generated secret already exists.  | `dict "secret" "secret-name" "context" $`                                                                                                                                                                                       |
 
 ### Storage
 
@@ -112,23 +121,24 @@ The following table lists the helpers available in the library which are scoped 
 
 ### Utils
 
-| Helper identifier              | Description                                           | Expected Input                                                         |
-|--------------------------------|-------------------------------------------------------|------------------------------------------------------------------------|
-| `common.utils.fieldToEnvVar`   | Build environment variable name given a field.        | `dict "field" "my-password"`                                           |
-| `common.utils.secret.getvalue` | Print instructions to get a secret value.             | `dict "secret" "secret-name" "field" "secret-value-field" "context" $` |
-| `common.utils.getValueFromKey` | Gets a value from `.Values` object given its key path | `dict "key" "path.to.key" "context" $`                                 |
+| Helper identifier              | Description                                                                              | Expected Input                                                         |
+|--------------------------------|------------------------------------------------------------------------------------------|------------------------------------------------------------------------|
+| `common.utils.fieldToEnvVar`   | Build environment variable name given a field.                                           | `dict "field" "my-password"`                                           |
+| `common.utils.secret.getvalue` | Print instructions to get a secret value.                                                | `dict "secret" "secret-name" "field" "secret-value-field" "context" $` |
+| `common.utils.getValueFromKey` | Gets a value from `.Values` object given its key path                                    | `dict "key" "path.to.key" "context" $`                                 |
+| `common.utils.getKeyFromList`  | Returns first `.Values` key with a defined value or first of the list if all non-defined | `dict "keys" (list "path.to.key1" "path.to.key2") "context" $`         |
 
 ### Validations
 
-| Helper identifier                                | Description                                                                                                           | Expected Input                                                                                                                                                                                                                           |
-|--------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `common.validations.values.single.empty`         | Validate a value must not be empty.                                                                                   | `dict "valueKey" "path.to.value" "secret" "secret.name" "field" "my-password" "context" $` secret and field are optional. In case they are given, the helper will generate a how to get instruction. See [ValidateValue](#validatevalue) |
-| `common.validations.values.multiple.empty`       | Validate a multiple values must not be empty. It returns a shared error for all the values.                           | `dict "required" (list $validateValueConf00 $validateValueConf01) "context" $`. See [ValidateValue](#validatevalue)                                                                                                                      |
-| `common.validations.values.mariadb.passwords`    | This helper will ensure required password for MariaDB are not empty. It returns a shared error for all the values.    | `dict "secret" "mariadb-secret" "subchart" "true" "context" $` subchart field is optional and could be true or false it depends on where you will use mariadb chart and the helper.                                                      |
-| `common.validations.values.postgresql.passwords` | This helper will ensure required password for PostgreSQL are not empty. It returns a shared error for all the values. | `dict "secret" "postgresql-secret" "subchart" "true" "context" $` subchart field is optional and could be true or false it depends on where you will use postgresql chart and the helper.                                                |
-| `common.validations.values.redis.passwords`      | This helper will ensure required password for Redis are not empty. It returns a shared error for all the values.      | `dict "secret" "redis-secret" "subchart" "true" "context" $` subchart field is optional and could be true or false it depends on where you will use redis chart and the helper.                                                          |
-| `common.validations.values.cassandra.passwords`  | This helper will ensure required password for Cassandra are not empty. It returns a shared error for all the values.  | `dict "secret" "cassandra-secret" "subchart" "true" "context" $` subchart field is optional and could be true or false it depends on where you will use cassandra chart and the helper.                                                  |
-| `common.validations.values.mongodb.passwords`    | This helper will ensure required password for MongoDB are not empty. It returns a shared error for all the values.    | `dict "secret" "mongodb-secret" "subchart" "true" "context" $` subchart field is optional and could be true or false it depends on where you will use mongodb chart and the helper.                                                      |
+| Helper identifier                                | Description                                                                                                                   | Expected Input                                                                                                                                                                                                                                                           |
+|--------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `common.validations.values.single.empty`         | Validate a value must not be empty.                                                                                           | `dict "valueKey" "path.to.value" "secret" "secret.name" "field" "my-password" "subchart" "subchart" "context" $` secret, field and subchart are optional. In case they are given, the helper will generate a how to get instruction. See [ValidateValue](#validatevalue) |
+| `common.validations.values.multiple.empty`       | Validate a multiple values must not be empty. It returns a shared error for all the values.                                   | `dict "required" (list $validateValueConf00 $validateValueConf01) "context" $`. See [ValidateValue](#validatevalue)                                                                                                                                                      |
+| `common.validations.values.mariadb.passwords`    | This helper will ensure required password for MariaDB are not empty. It returns a shared error for all the values.            | `dict "secret" "mariadb-secret" "subchart" "true" "context" $` subchart field is optional and could be true or false it depends on where you will use mariadb chart and the helper.                                                                                      |
+| `common.validations.values.postgresql.passwords` | This helper will ensure required password for PostgreSQL are not empty. It returns a shared error for all the values.         | `dict "secret" "postgresql-secret" "subchart" "true" "context" $` subchart field is optional and could be true or false it depends on where you will use postgresql chart and the helper.                                                                                |
+| `common.validations.values.redis.passwords`      | This helper will ensure required password for Redis<sup>TM</sup> are not empty. It returns a shared error for all the values. | `dict "secret" "redis-secret" "subchart" "true" "context" $` subchart field is optional and could be true or false it depends on where you will use redis chart and the helper.                                                                                          |
+| `common.validations.values.cassandra.passwords`  | This helper will ensure required password for Cassandra are not empty. It returns a shared error for all the values.          | `dict "secret" "cassandra-secret" "subchart" "true" "context" $` subchart field is optional and could be true or false it depends on where you will use cassandra chart and the helper.                                                                                  |
+| `common.validations.values.mongodb.passwords`    | This helper will ensure required password for MongoDB&reg; are not empty. It returns a shared error for all the values.            | `dict "secret" "mongodb-secret" "subchart" "true" "context" $` subchart field is optional and could be true or false it depends on where you will use mongodb chart and the helper.                                                                                      |
 
 ### Warnings
 
@@ -164,7 +174,7 @@ pullSecrets:
   type: array
   items:
     type: string
-  description: Optionally specify an array of imagePullSecrets.
+  description: Optionally specify an array of imagePullSecrets (evaluated as templates).
 
 debug:
   type: boolean

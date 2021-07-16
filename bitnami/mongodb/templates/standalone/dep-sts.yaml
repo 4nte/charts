@@ -9,10 +9,20 @@ metadata:
     {{- if .Values.labels }}
     {{- include "common.tplvalues.render" (dict "value" .Values.labels "context" $) | nindent 4 }}
     {{- end }}
-  {{- if .Values.annotations }}
-  annotations: {{- include "common.tplvalues.render" (dict "value" .Values.annotations "context" $) | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if or .Values.annotations .Values.commonAnnotations }}
+  annotations:
+    {{- if .Values.annotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.annotations "context" $) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
   {{- end }}
 spec:
+  replicas: 1
   {{- if .Values.useStatefulSet }}
   serviceName: {{ include "mongodb.fullname" . }}
   updateStrategy:
@@ -32,6 +42,9 @@ spec:
         app.kubernetes.io/component: mongodb
         {{- if .Values.podLabels }}
         {{- include "common.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.commonLabels }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 8 }}
         {{- end }}
       {{- if or (include "mongodb.createConfigmap" .) .Values.podAnnotations }}
       annotations:
@@ -59,6 +72,9 @@ spec:
       {{- if .Values.nodeSelector }}
       nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.nodeSelector "context" $) | nindent 8 }}
       {{- end }}
+      {{- if .Values.hostAliases }}
+      hostAliases: {{- include "common.tplvalues.render" (dict "value" .Values.hostAliases "context" $) | nindent 8 }}
+      {{- end }}
       {{- if .Values.tolerations }}
       tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" $) | nindent 8 }}
       {{- end }}
@@ -82,9 +98,9 @@ spec:
             - -ec
           args:
             - |
-              mkdir -p {{ .Values.persistence.mountPath }}
+              mkdir -p {{ .Values.persistence.mountPath }}{{- if .Values.persistence.subPath }}/{{ .Values.persistence.subPath }}{{- end }}
               {{- if and .Values.podSecurityContext.enabled .Values.containerSecurityContext.enabled }}
-              chown -R "{{ .Values.containerSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.fsGroup }}" "{{ .Values.persistence.mountPath }}"
+              chown -R "{{ .Values.containerSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.fsGroup }}" "{{ .Values.persistence.mountPath }}{{- if .Values.persistence.subPath }}/{{ .Values.persistence.subPath }}{{- end }}"
               {{- end }}
           {{- if eq ( toString ( .Values.volumePermissions.securityContext.runAsUser )) "auto" }}
           securityContext: {{- omit .Values.volumePermissions.securityContext "runAsUser" | toYaml | nindent 12 }}
@@ -148,6 +164,7 @@ spec:
               cd /certs/
               shopt -s extglob
               rm -rf !(mongodb-ca-cert|mongodb.pem|CAs|openssl.cnf)
+              chmod 0600 mongodb-ca-cert mongodb.pem
               EOF
         {{- end }}
       {{- end }}
@@ -158,15 +175,19 @@ spec:
           {{- if .Values.containerSecurityContext.enabled }}
           securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}
-          {{- if .Values.command }}
+          {{- if .Values.diagnosticMode.enabled }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 12 }}
+          {{- else if .Values.command }}
           command: {{- include "common.tplvalues.render" (dict "value" .Values.command "context" $) | nindent 12 }}
           {{- end }}
-          {{- if .Values.args }}
+          {{- if .Values.diagnosticMode.enabled }}
+          args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 12 }}
+          {{- else if .Values.args }}
           args: {{- include "common.tplvalues.render" (dict "value" .Values.args "context" $) | nindent 12 }}
           {{- end }}
           env:
             - name: BITNAMI_DEBUG
-              value: {{ ternary "true" "false" .Values.image.debug | quote }}
+              value: {{ ternary "true" "false" (or .Values.image.debug .Values.diagnosticMode.enabled) | quote }}
             {{- if .Values.auth.username }}
             - name: MONGODB_USERNAME
               value: {{ .Values.auth.username | quote }}
@@ -195,17 +216,21 @@ spec:
               value: {{ .Values.systemLogVerbosity | quote }}
             - name: MONGODB_DISABLE_SYSTEM_LOG
               value: {{ ternary "yes" "no" .Values.disableSystemLog | quote }}
+            - name: MONGODB_DISABLE_JAVASCRIPT
+              value: {{ ternary "yes" "no" .Values.disableJavascript | quote }}
+            - name: MONGODB_ENABLE_JOURNAL
+              value: {{ ternary "yes" "no" .Values.enableJournal | quote  }}
             - name: MONGODB_ENABLE_IPV6
               value: {{ ternary "yes" "no" .Values.enableIPv6 | quote }}
             - name: MONGODB_ENABLE_DIRECTORY_PER_DB
               value: {{ ternary "yes" "no" .Values.directoryPerDB | quote }}
+            {{- $extraFlags := .Values.extraFlags | join " " -}}
             {{- if .Values.tls.enabled }}
-            - name: MONGODB_EXTRA_FLAGS
-              value: --tlsMode=requireTLS --tlsCertificateKeyFile=/certs/mongodb.pem --tlsCAFile=/certs/mongodb-ca-cert
+              {{- $extraFlags = printf "%s %s" "--tlsMode=requireTLS --tlsCertificateKeyFile=/certs/mongodb.pem --tlsCAFile=/certs/mongodb-ca-cert" $extraFlags  }}
             {{- end }}
-            {{- if .Values.extraFlags }}
+            {{- if ne $extraFlags ""}}
             - name: MONGODB_EXTRA_FLAGS
-              value: {{ .Values.extraFlags | join " " | quote }}
+              value: {{ $extraFlags | quote }}
             {{- end }}
             {{- if .Values.tls.enabled }}
             - name: MONGODB_CLIENT_EXTRA_FLAGS
@@ -228,11 +253,13 @@ spec:
           ports:
             - name: mongodb
               containerPort: 27017
+          {{- if not .Values.diagnosticMode.enabled }}
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
             exec:
               command:
                 - mongo
+                - --disableImplicitSessions
               {{- if .Values.tls.enabled }}
                 - --tls
                 - --tlsCertificateKeyFile=/certs/mongodb.pem
@@ -248,18 +275,29 @@ spec:
           {{- else if .Values.customLivenessProbe }}
           livenessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customLivenessProbe "context" $) | nindent 12 }}
           {{- end }}
+          {{- end }}
+          {{- if not .Values.diagnosticMode.enabled }}
           {{- if .Values.readinessProbe.enabled }}
           readinessProbe:
             exec:
               command:
-                - mongo
-              {{- if .Values.tls.enabled }}
-                - --tls
-                - --tlsCertificateKeyFile=/certs/mongodb.pem
-                - --tlsCAFile=/certs/mongodb-ca-cert
-              {{- end }}
-                - --eval
-                - "db.adminCommand('ping')"
+                - bash
+                - -ec
+                - |
+                  {{- if .Values.tls.enabled }}
+                  TLS_OPTIONS='--tls --tlsCertificateKeyFile=/certs/mongodb.pem --tlsCAFile=/certs/mongodb-ca-cert'
+                  {{- end }}
+                  # Run the proper check depending on the version
+                  [[ $(mongo --version | grep "MongoDB shell") =~ ([0-9]+\.[0-9]+\.[0-9]+) ]] && VERSION=${BASH_REMATCH[1]}
+                  . /opt/bitnami/scripts/libversion.sh
+                  VERSION_MAJOR="$(get_sematic_version "$VERSION" 1)"
+                  VERSION_MINOR="$(get_sematic_version "$VERSION" 2)"
+                  VERSION_PATCH="$(get_sematic_version "$VERSION" 3)"
+                  if [[ "$VERSION_MAJOR" -ge 4 ]] && [[ "$VERSION_MINOR" -ge 4 ]] && [[ "$VERSION_PATCH" -ge 2 ]]; then
+                      mongo --disableImplicitSessions $TLS_OPTIONS --eval 'db.hello().isWritablePrimary || db.hello().secondary' | grep -q 'true'
+                  else
+                      mongo --disableImplicitSessions $TLS_OPTIONS --eval 'db.isMaster().ismaster || db.isMaster().secondary' | grep -q 'true'
+                  fi
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
@@ -267,6 +305,28 @@ spec:
             failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
           {{- else if .Values.customReadinessProbe }}
           readinessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" $) | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          {{- if not .Values.diagnosticMode.enabled }}
+          {{- if .Values.startupProbe.enabled }}
+          startupProbe:
+            exec:
+              command:
+                - bash
+                - -ec
+                - |
+                  {{- if .Values.tls.enabled }}
+                  TLS_OPTIONS='--tls --tlsCertificateKeyFile=/certs/mongodb.pem --tlsCAFile=/certs/mongodb-ca-cert'
+                  {{- end }}
+                  mongo --disableImplicitSessions $TLS_OPTIONS --eval 'db.hello().isWritablePrimary || db.hello().secondary' | grep -q 'true'
+            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.startupProbe.successThreshold }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+          {{- else if .Values.customStartupProbe }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customStartupProbe "context" $) | nindent 12 }}
+          {{- end }}
           {{- end }}
           {{- if .Values.resources }}
           resources: {{- toYaml .Values.resources | nindent 12 }}
@@ -303,7 +363,7 @@ spec:
             - -ec
           args:
             - |
-              /bin/mongodb_exporter --mongodb.uri "{{ include "mongodb.mongodb_exporter.uri" . }}" {{ .Values.metrics.extraFlags }}
+              /bin/mongodb_exporter --web.listen-address ":{{ .Values.metrics.containerPort }}" --mongodb.uri "{{ include "mongodb.mongodb_exporter.uri" . }}" {{ .Values.metrics.extraFlags }}
           env:
           {{- if .Values.auth.enabled }}
           - name: MONGODB_ROOT_PASSWORD
@@ -319,7 +379,8 @@ spec:
           {{- end }}
           ports:
             - name: metrics
-              containerPort: 9216
+              containerPort: {{ .Values.metrics.containerPort }}
+          {{- if not .Values.diagnosticMode.enabled }}
           {{- if .Values.metrics.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
@@ -341,6 +402,7 @@ spec:
             timeoutSeconds: {{ .Values.metrics.readinessProbe.timeoutSeconds }}
             failureThreshold: {{ .Values.metrics.readinessProbe.failureThreshold }}
             successThreshold: {{ .Values.metrics.readinessProbe.successThreshold }}
+          {{- end }}
           {{- end }}
           {{- if .Values.metrics.resources }}
           resources: {{- toYaml .Values.metrics.resources | nindent 12 }}
@@ -368,14 +430,14 @@ spec:
           emptyDir: {}
         - name: certs-volume
           secret:
-            secretName: {{ template "mongodb.caSecretName" . }}
+            secretName: {{ template "mongodb.tlsSecretName" . }}
             items:
             - key: mongodb-ca-cert
               path: mongodb-ca-cert
-              mode: 511
+              mode: 0600
             - key: mongodb-ca-key
               path: mongodb-ca-key
-              mode: 511
+              mode: 0600
         {{- end }}
   {{- if not .Values.persistence.enabled }}
         - name: datadir
